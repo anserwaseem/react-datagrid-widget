@@ -1,25 +1,38 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import ConfigurableDataGrid from "./ConfigurableDataGrid";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ConfigurableDataGrid
+      labelKeyDataTypes={[
+        {
+          label: "Account Id",
+          key: "account_id",
+          dataType: "string",
+        },
+        {
+          label: "Name",
+          key: "name",
+          dataType: "string",
+        },
+        {
+          label: "Amount",
+          key: "amount",
+          dataType: "number",
+        },
+        {
+          label: "Date",
+          key: "date",
+          dataType: "date",
+        },
+      ]}
+      apiEndpoint="https://us-central1-fir-apps-services.cloudfunctions.net/transactions"
+      jsonPaths={{
+        amount: "amount",
+        name: "name",
+        date: "date",
+        account_id: "account_id",
+      }}
+    />
   );
 }
 
