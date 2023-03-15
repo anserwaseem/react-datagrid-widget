@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Container,
-  Divider,
   MenuItem,
   Snackbar,
   Stack,
@@ -13,47 +12,34 @@ import {
 import Collapse from "@mui/material/Collapse";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
-import { useEffect, useState } from "react";
-import { useFormik } from "formik";
-import { validationSchema } from "./util/validateSchema";
-import { ColumnLimit } from "./util/constants";
-
-type Column = {
-  label: string;
-  key: string;
-  dataType: string;
-};
-
-type Config = {
-  apiEndpoint: string;
-  columns: Column[];
-  jsonPath: string;
-  titleKey: string;
-  subtitleKey: string;
-};
+import { FormEvent, useEffect, useState } from "react";
+import { useFormik, getIn } from "formik";
+import { validationSchema } from "../util/validateSchema";
+import { ColumnLimit } from "../util/constants";
+import DataGridWidget from "../components/DataGridWidget";
 
 export const ConfigForm: React.FC = () => {
   const [isCollapsibleOpen, setIsCollapsibleOpen] = useState(true);
   const [isSnackbarOpen, setIsSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
   const [numberOfColumns, setNumberOfColumns] = useState(0);
+  const [areConfigurationsSet, setAreConfigurationsSet] = useState(false);
 
   const formik = useFormik({
     initialValues: {
       apiEndpoint: "",
       columns: [] as Column[],
-      jsonPath: "",
       titleKey: "",
       subtitleKey: "",
     } as Config,
     validationSchema: validationSchema,
-    onSubmit: (values) => {
-      alert(JSON.stringify(values, null, 2));
-    },
+    onSubmit: () => setAreConfigurationsSet(true),
   });
 
   useEffect(() => {
     if (numberOfColumns >= ColumnLimit) {
       setIsSnackbarOpen(true);
+      setSnackbarMessage(`Cannot create more than ${ColumnLimit} columns.`);
     }
   }, [numberOfColumns]);
 
@@ -64,10 +50,12 @@ export const ConfigForm: React.FC = () => {
   const handleAddColumn = () => {
     formik.setFieldValue("columns", [
       ...formik.values.columns,
-      { label: "", key: "", dataType: "" },
+      { label: "", key: "", dataType: "", jsonPath: "" },
     ]);
 
     setNumberOfColumns(numberOfColumns + 1);
+
+    if (areConfigurationsSet) setAreConfigurationsSet(false);
   };
 
   const handleDeleteColumn = (index: number) => {
@@ -83,6 +71,8 @@ export const ConfigForm: React.FC = () => {
       formik.setFieldValue("subtitleKey", "");
 
     setNumberOfColumns(numberOfColumns - 1);
+
+    if (areConfigurationsSet) setAreConfigurationsSet(false);
   };
 
   const handleSetColumn = (
@@ -91,6 +81,21 @@ export const ConfigForm: React.FC = () => {
     value: string
   ) => {
     formik.setFieldValue(`columns[${index}].[${propertyName}]`, value);
+
+    if (areConfigurationsSet) setAreConfigurationsSet(false);
+  };
+
+  const handleSetConfig = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    formik.handleChange(event);
+
+    if (areConfigurationsSet) setAreConfigurationsSet(false);
+  };
+
+  const handleSetConfigurations = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    formik.handleSubmit();
   };
 
   return (
@@ -105,7 +110,7 @@ export const ConfigForm: React.FC = () => {
           severity="warning"
           sx={{ width: "100%" }}
         >
-          Cannot create more than {ColumnLimit} columns
+          {snackbarMessage}
         </Alert>
       </Snackbar>
 
@@ -116,7 +121,7 @@ export const ConfigForm: React.FC = () => {
         {isCollapsibleOpen ? <ExpandLess /> : <ExpandMore />}
       </Button>
 
-      <Collapse in={isCollapsibleOpen} timeout="auto" unmountOnExit>
+      <Collapse in={isCollapsibleOpen} timeout="auto">
         <Container>
           <Typography
             variant="h4"
@@ -130,7 +135,7 @@ export const ConfigForm: React.FC = () => {
           <Box
             component="form"
             autoComplete={"true"}
-            onSubmit={formik.handleSubmit}
+            onSubmit={handleSetConfigurations}
             py={5}
             sx={{
               display: "flex",
@@ -148,10 +153,9 @@ export const ConfigForm: React.FC = () => {
               label="API Endpoint"
               fullWidth
               autoFocus
-              required
               margin="dense"
               value={formik.values.apiEndpoint}
-              onChange={formik.handleChange}
+              onChange={handleSetConfig}
               error={
                 formik.touched.apiEndpoint && Boolean(formik.errors.apiEndpoint)
               }
@@ -165,7 +169,7 @@ export const ConfigForm: React.FC = () => {
               color="info"
               onClick={handleAddColumn}
               disabled={numberOfColumns >= ColumnLimit}
-              sx={{ mt: 0.5 }}
+              sx={{ my: 0.5 }}
             >
               Add Column
             </Button>
@@ -180,6 +184,14 @@ export const ConfigForm: React.FC = () => {
                   onChange={(event) =>
                     handleSetColumn(index, "label", event.target.value)
                   }
+                  error={Boolean(
+                    getIn(formik.touched, `columns[${index}].label`) &&
+                      getIn(formik.errors, `columns[${index}].label`)
+                  )}
+                  helperText={
+                    getIn(formik.touched, `columns[${index}].label`) &&
+                    getIn(formik.errors, `columns[${index}].label`)
+                  }
                 />
                 <TextField
                   id="key"
@@ -190,6 +202,14 @@ export const ConfigForm: React.FC = () => {
                   onChange={(event) =>
                     handleSetColumn(index, "key", event.target.value)
                   }
+                  error={Boolean(
+                    getIn(formik.touched, `columns[${index}].key`) &&
+                      getIn(formik.errors, `columns[${index}].key`)
+                  )}
+                  helperText={
+                    getIn(formik.touched, `columns[${index}].key`) &&
+                    getIn(formik.errors, `columns[${index}].key`)
+                  }
                 />
                 <TextField
                   id="dataType"
@@ -199,6 +219,25 @@ export const ConfigForm: React.FC = () => {
                   value={column.dataType}
                   onChange={(event) =>
                     handleSetColumn(index, "dataType", event.target.value)
+                  }
+                  error={Boolean(
+                    getIn(formik.touched, `columns[${index}].dataType`) &&
+                      getIn(formik.errors, `columns[${index}].dataType`)
+                  )}
+                  helperText={
+                    getIn(formik.touched, `columns[${index}].dataType`) &&
+                    getIn(formik.errors, `columns[${index}].dataType`)
+                  }
+                />
+                <TextField
+                  id="jsonPath"
+                  label="JSON Path"
+                  type={"text"}
+                  fullWidth
+                  margin="dense"
+                  value={column.jsonPath}
+                  onChange={(event) =>
+                    handleSetColumn(index, "jsonPath", event.target.value)
                   }
                 />
                 <Button
@@ -215,16 +254,6 @@ export const ConfigForm: React.FC = () => {
             ))}
 
             <TextField
-              id="jsonPath"
-              label="JSON Path"
-              type={"text"}
-              fullWidth
-              margin="dense"
-              value={formik.values.jsonPath}
-              onChange={formik.handleChange}
-            />
-
-            <TextField
               id="titleKey"
               name="titleKey"
               select
@@ -232,7 +261,7 @@ export const ConfigForm: React.FC = () => {
               fullWidth
               margin="dense"
               value={formik.values.titleKey}
-              onChange={formik.handleChange}
+              onChange={handleSetConfig}
             >
               <MenuItem key={""} value={""}>
                 Not Selected // Or Empty
@@ -252,7 +281,7 @@ export const ConfigForm: React.FC = () => {
               fullWidth
               margin="dense"
               value={formik.values.subtitleKey}
-              onChange={formik.handleChange}
+              onChange={handleSetConfig}
             >
               <MenuItem key={""} value={""}>
                 Not Selected // Or Empty
@@ -270,6 +299,14 @@ export const ConfigForm: React.FC = () => {
           </Box>
         </Container>
       </Collapse>
+
+      {areConfigurationsSet && (
+        <DataGridWidget
+          config={formik.values}
+          setIsSnackbarOpen={setIsSnackbarOpen}
+          setSnackbarMessage={setSnackbarMessage}
+        />
+      )}
     </>
   );
 };
