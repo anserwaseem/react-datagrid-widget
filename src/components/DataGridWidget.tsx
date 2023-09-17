@@ -25,36 +25,41 @@ const DataGridWidget: React.FC<DataGridWidgetProps> = ({
     const fetchData = async () => {
       try {
         const response = await fetch(apiEndpoint);
-        const jsonData = (await response.json())?.data as any[];
-        if (columns?.length > 0) {
-          // get data of whole column using its jsonPath and store in rawData
-          let rawData: any[] = [];
-          columns.forEach(({ key, jsonPath }) => {
-            const jsonResult = JSONPath({
-              path: jsonPath === "" ? `$..${key}` : jsonPath,
-              json: jsonData,
-            });
-            rawData.push(jsonResult);
+
+        const jsonData = await response.json();
+
+        // get data of whole column using its jsonPath and store in rawData
+        let rawData: any[] = [];
+        columns.forEach(({ key, jsonPath }) => {
+          const jsonResult = JSONPath({
+            path: jsonPath === "" ? `$..${key}` : jsonPath,
+            json: jsonData,
           });
+          rawData.push(jsonResult);
+        });
 
-          const maxArrayLength =
-            Math.max(...rawData?.map((arr) => arr.length)) ?? 0;
+        const maxArrayLength =
+          Math.max(...rawData?.map((arr) => arr.length)) ?? 0;
 
-          // create an array of objects with key as column key and value as data of that column
-          let transformedData: any[] = [];
-          for (let i = 0; i < maxArrayLength; i++) {
-            const transformedItem: any = {};
+        const transformedData = Array.from(
+          { length: maxArrayLength },
+          (_, i) => {
+            const transformedItem: Record<string, any> = {};
             rawData.forEach((arr, index) => {
-              transformedItem[columns[index].key] = transformValue(
-                arr[i],
-                columns?.[index]?.dataType ?? "string"
-              );
-              transformedItem.id = i;
+              transformedItem[columns[index].key] = !arr[i]
+                ? ""
+                : transformValue(
+                    arr[i],
+                    columns[index].dataType ?? "string",
+                    columns[index].label
+                  );
             });
-            transformedData.push(transformedItem);
+            transformedItem.id = i;
+            return transformedItem;
           }
-          setData(transformedData);
-        } else setData(jsonData);
+        );
+
+        setData(transformedData);
       } catch (error) {
         console.error(error);
       }
@@ -69,11 +74,11 @@ const DataGridWidget: React.FC<DataGridWidgetProps> = ({
     sortable: true,
   }));
 
-  const transformValue = (value: any, dataType: DataType) => {
+  const transformValue = (value: any, dataType: DataType, label: string) => {
     if (typeof value !== dataType) {
       setIsSnackbarOpen(true);
       setSnackbarMessage(
-        `Data type mismatch. Expected ${dataType} but got ${typeof value} in the data.`
+        `Data type mismatch. Expected ${dataType} but got ${typeof value} in the "${label}" column.`
       );
       return String(value);
     }
@@ -87,6 +92,8 @@ const DataGridWidget: React.FC<DataGridWidgetProps> = ({
           return Boolean(value);
         case "bigint":
           return BigInt(value);
+        case "object":
+          return JSON.stringify(value);
         default:
           return String(value);
       }
@@ -115,6 +122,7 @@ const DataGridWidget: React.FC<DataGridWidgetProps> = ({
       columns={gridColumns}
       autoHeight
       disableRowSelectionOnClick
+      getRowId={() => Math.floor(Math.random() * (1000000 - 0 + 1)) + 0}
     />
   );
 };
