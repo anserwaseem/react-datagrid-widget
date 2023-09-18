@@ -44,7 +44,7 @@ const DataGridWidget: React.FC<DataGridWidgetProps> = ({
         const transformedData = Array.from(
           { length: maxArrayLength },
           (_, i) => {
-            const transformedItem: Record<string, any> = {};
+            const transformedItem: Record<string, any> = { id: i };
             rawData.forEach((arr, index) => {
               transformedItem[columns[index].key] = !arr[i]
                 ? ""
@@ -54,7 +54,6 @@ const DataGridWidget: React.FC<DataGridWidgetProps> = ({
                     columns[index].label
                   );
             });
-            transformedItem.id = i;
             return transformedItem;
           }
         );

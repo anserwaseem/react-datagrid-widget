@@ -204,11 +204,15 @@ export const ConfigForm: React.FC = () => {
                   }
                   error={Boolean(
                     getIn(formik.touched, `columns[${index}].key`) &&
-                      getIn(formik.errors, `columns[${index}].key`)
+                      (getIn(formik.errors, `columns[${index}].key`) ||
+                        (typeof formik.errors.columns?.at(0) === "string" &&
+                          formik.errors.columns[0]))
                   )}
                   helperText={
                     getIn(formik.touched, `columns[${index}].key`) &&
-                    getIn(formik.errors, `columns[${index}].key`)
+                    (getIn(formik.errors, `columns[${index}].key`) ||
+                      (typeof formik.errors.columns?.at(0) === "string" &&
+                        formik.errors.columns[0]))
                   }
                 />
                 <TextField
